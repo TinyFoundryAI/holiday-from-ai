@@ -106,6 +106,6 @@ https://tinyfoundry.ai
 
 ## Support URL
 ```
-https://github.com/<your-username>/holiday-from-ai/issues
+https://github.com/TinyFoundryAI/holiday-from-ai/issues
 ```
-*(fill in after GitHub push)*
+
