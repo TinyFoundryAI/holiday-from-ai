@@ -16,11 +16,11 @@
   const POSTS_FOR_PEAK = 4;
   const VOLUME_RAMP_MS = 500;
   const VISIBILITY_THRESHOLD = 0.3;
-  const IMAGE_COUNT = 8;
+  const IMAGE_COUNT = 12;
   const MIN_IMAGE_DIM = 200;
   const MIN_POST_HEIGHT = 180;
-  const MAX_POST_HEIGHT = 2000;
-  const MAX_POST_WIDTH = 900;
+  const MAX_POST_HEIGHT = 3200;   // profile sections (About / Experience) can be quite tall
+  const MAX_POST_WIDTH = 1100;    // profile main column can be ~1000px
   const SWEEP_DURATION_MS = 1400;
   const NAV_RESCAN_DELAY_MS = 400;
   const HEALTH_CHECK_INTERVAL_MS = 5000;
@@ -85,7 +85,15 @@
         transition: background 160ms ease, transform 160ms ease;
       }
       #${SPEAKER_BTN_ID}:hover .ai-holiday-bg { background: #4aa3bf; transform: scale(1.04); }
-      #${SPEAKER_BTN_ID}.is-muted .ai-holiday-bg { background: #5a7580; }
+      #${SPEAKER_BTN_ID}.is-muted .ai-holiday-bg {
+        background: #5a7580;
+        animation: ai-holiday-invite 2.8s ease-in-out infinite;
+      }
+      @keyframes ai-holiday-invite {
+        0%, 100% { transform: scale(1.00); box-shadow: 0 4px 14px rgba(0,0,0,0.25); }
+        50%      { transform: scale(1.03); box-shadow: 0 4px 18px rgba(61,138,165,0.40); }
+      }
+      #${SPEAKER_BTN_ID}.is-muted:hover .ai-holiday-bg { animation: none; }
       #${SPEAKER_BTN_ID} .ai-holiday-ring {
         position: absolute; inset: 0; pointer-events: none; transform: rotate(-90deg);
       }
@@ -310,7 +318,39 @@
       img.src = pick;
       idx++; swapped++;
     }
+    swapPostVideos(post, base, idx);
     return swapped;
+  }
+
+  // Replace any <video> in a post with a still garden image (same bounding size).
+  // LinkedIn often embeds auto-playing videos; we silence them by swapping to a poster-only image.
+  function swapPostVideos(post, base, idxStart) {
+    if (!post || gardenImageUrls.length === 0) return;
+    const videos = post.querySelectorAll('video');
+    let idx = idxStart || 0;
+    for (const video of videos) {
+      if (video.hasAttribute(SWAPPED_IMG_ATTR)) { idx++; continue; }
+      const rect = video.getBoundingClientRect();
+      const w = rect.width || video.clientWidth || video.videoWidth || 0;
+      const h = rect.height || video.clientHeight || video.videoHeight || 0;
+      if (w < MIN_IMAGE_DIM || h < MIN_IMAGE_DIM) { idx++; continue; }
+      // Stop the video, strip its sources, replace poster with a garden image.
+      try { video.pause(); } catch (e) {}
+      video.removeAttribute('autoplay');
+      video.muted = true;
+      video.loop = false;
+      const pick = gardenImageUrls[(base + idx) % gardenImageUrls.length];
+      // Save originals for revert
+      video.dataset.aiHolidayOrigPoster = video.getAttribute('poster') || '';
+      video.dataset.aiHolidayOrigSrc = video.getAttribute('src') || '';
+      video.setAttribute('poster', pick);
+      video.removeAttribute('src');
+      // Remove any <source> children so the browser can't re-derive the video
+      for (const source of video.querySelectorAll('source')) source.remove();
+      video.load();   // force poster to display
+      video.setAttribute(SWAPPED_IMG_ATTR, '1');
+      idx++;
+    }
   }
 
   function rescanTransformedPosts() {
@@ -444,7 +484,18 @@
       if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
       a.volume = targetVolumeForVisibleCount(visiblePosts.size);
       const p = a.play();
-      if (p && typeof p.catch === 'function') p.catch(err => console.warn('[Holiday from AI] audio play blocked:', err.name));
+      if (p && typeof p.catch === 'function') {
+        p.catch(err => {
+          // Chrome blocks autoplay on fresh page loads. Revert UI + stored setting
+          // to muted so the button accurately reflects that audio is silent, and the
+          // user's next click starts audio fresh.
+          console.warn('[Holiday from AI] audio play blocked (autoplay policy):', err.name);
+          settings.soundEnabled = false;
+          chrome.storage.sync.set({ soundEnabled: false }).catch(() => {});
+          updateSpeakerUI();
+          if (audioEl) audioEl.pause();
+        });
+      }
     } else if (audioEl) {
       audioEl.pause();
       if (volumeAnimRAF) { cancelAnimationFrame(volumeAnimRAF); volumeAnimRAF = null; }
@@ -459,7 +510,6 @@
     const postToAINodes = new Map();
     for (const node of nodes) {
       if (!textHasAITerms(node.nodeValue)) continue;
-      if (isLikelyBylineOrChrome(node)) continue;
       const post = findContainingPost(node);
       if (!post) continue;
       if (!postToAINodes.has(post)) postToAINodes.set(post, []);
@@ -555,6 +605,17 @@
       delete img.dataset.aiHolidayOrigSrcset;
       delete img.dataset.aiHolidayOrigSizes;
     }
+    const videos = document.querySelectorAll(`video[${SWAPPED_IMG_ATTR}]`);
+    for (const video of videos) {
+      if (video.dataset.aiHolidayOrigPoster !== undefined) {
+        if (video.dataset.aiHolidayOrigPoster) video.setAttribute('poster', video.dataset.aiHolidayOrigPoster);
+        else video.removeAttribute('poster');
+      }
+      if (video.dataset.aiHolidayOrigSrc) video.setAttribute('src', video.dataset.aiHolidayOrigSrc);
+      video.removeAttribute(SWAPPED_IMG_ATTR);
+      delete video.dataset.aiHolidayOrigPoster;
+      delete video.dataset.aiHolidayOrigSrc;
+    }
     for (const p of document.querySelectorAll(`[${TRANSFORMED_POST_ATTR}]`)) p.removeAttribute(TRANSFORMED_POST_ATTR);
     visiblePosts.clear();
     if (postVisibilityObserver) { postVisibilityObserver.disconnect(); postVisibilityObserver = null; }
@@ -579,7 +640,6 @@
     const postMap = new Map();
     for (const node of nodes) {
       if (!textHasAITerms(node.nodeValue)) continue;
-      if (isLikelyBylineOrChrome(node)) continue;
       const post = findContainingPost(node);
       if (!post) continue;
       if (!postMap.has(post)) postMap.set(post, []);

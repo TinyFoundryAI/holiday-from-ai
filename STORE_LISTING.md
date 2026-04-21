@@ -11,9 +11,9 @@ Holiday from AI
 
 ## Summary (short description, ≤ 132 chars)
 ```
-Replaces every LinkedIn post about AI with a garden-themed haiku. A holiday from AI-induced existential dread.
+Replaces all AI-related content on LinkedIn with garden-themed haikus.
 ```
-*(110 chars)*
+*(74 chars)*
 
 ## Description (detailed, for the listing body)
 ```

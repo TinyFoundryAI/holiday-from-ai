@@ -1,16 +1,21 @@
 # Image attributions
 
-These images are sourced from Wikimedia Commons under free licenses (CC-BY, CC-BY-SA, or public domain). Each file links to its Commons page where the original author and precise license terms are recorded. Re-run `_fetch.py` to regenerate from source.
+Garden photos bundled with the extension. Sourced via the Unsplash API.
+Per the Unsplash License they're free to use; credit below as courtesy.
 
-| File | Source |
-|---|---|
-| garden-1.jpg | [Vegetable garden](https://commons.wikimedia.org/wiki/File:Vegetable_garden_1.JPG) |
-| garden-2.jpg | [Raised vegetable bed, Boreham, Essex](https://commons.wikimedia.org/wiki/File:Raised_vegetable_bed_at_Boreham,_Essex,_England.jpg) |
-| garden-3.jpg | [Lettuce garden](https://commons.wikimedia.org/wiki/File:Lettuce_garden.jpg) |
-| garden-4.jpg | [Flower and vegetable garden](https://commons.wikimedia.org/wiki/File:Flower_and_vegetable_garden.jpg) |
-| garden-5.jpg | [Kale and Cabbage in Raised Garden Beds](https://commons.wikimedia.org/wiki/File:Kale_and_Cabbage_in_Raised_Garden_Beds_(49200262267).jpg) |
-| garden-6.jpg | [A Surrey Garden](https://commons.wikimedia.org/wiki/File:A_Surrey_Garden_(4663990970).jpg) |
-| garden-7.jpg | [An Cala Garden](https://commons.wikimedia.org/wiki/File:An_Cala_Garden_(geograph_4510494).jpg) |
-| garden-8.jpg | [Autumn back garden](https://commons.wikimedia.org/wiki/File:Autumn_back_garden_-_Flickr_-_peganum.jpg) |
+| File | Photo | Author |
+|---|---|---|
+| garden-1.jpg | [view](https://unsplash.com/photos/a-stone-house-with-a-green-roof-surrounded-by-greenery-i3Sx427bVXc) | [Hugo Kruip](https://unsplash.com/@hugo1951) |
+| garden-2.jpg | [view](https://unsplash.com/photos/woman-in-purple-and-pink-tank-top-holding-red-fruit-during-daytime-0rudQwWtobw) | [Mary Jane Duford](https://unsplash.com/@maryjaneduford) |
+| garden-3.jpg | [view](https://unsplash.com/photos/pink-hydrangeas-bloom-in-a-sun-dappled-garden-ldZM5INNPuk) | [kuangkuang xia](https://unsplash.com/@xiakuangkuang) |
+| garden-4.jpg | [view](https://unsplash.com/photos/bed-of-red-roses-in-bloom-dv7cSiHurKM) | [Nikita Tikhomirov](https://unsplash.com/@niki_mir) |
+| garden-5.jpg | [view](https://unsplash.com/photos/two-green-vegetables-pdlC9_bgN9o) | [Kelly Neil](https://unsplash.com/@baconandbaileys) |
+| garden-6.jpg | [view](https://unsplash.com/photos/delicate-pink-flowers-bloom-amongst-lush-green-foliage-UhuOC0Xzv7g) | [Anna King](https://unsplash.com/@kingslady_) |
+| garden-7.jpg | [view](https://unsplash.com/photos/green-trees-and-plants-near-black-metal-fence-during-daytime-XDVoBD5eTrA) | [Delaney Van](https://unsplash.com/@delaneyvan) |
+| garden-8.jpg | [view](https://unsplash.com/photos/a-small-green-house-in-a-field-of-tall-grass-8xfkyZxi1Us) | [Michael Förtsch](https://unsplash.com/@michael_f) |
+| garden-9.jpg | [view](https://unsplash.com/photos/green-plants-on-black-metal-train-rail-during-daytime-bk11wZwb9F4) | [Markus Spiske](https://unsplash.com/@markusspiske) |
+| garden-10.jpg | [view](https://unsplash.com/photos/a-group-of-purple-flowers-PEPUUIbJUYU) | [Nancy Hughes](https://unsplash.com/@mostlymarvelling) |
+| garden-11.jpg | [view](https://unsplash.com/photos/brown-wooden-welcome-signage-on-green-plants-eL4ADAsiOR8) | [David Clode](https://unsplash.com/@davidclode) |
+| garden-12.jpg | [view](https://unsplash.com/photos/female-statue-near-pon-G-Y4Cz2Mrn0) | [Wonderlane](https://unsplash.com/@wonderlane) |
 
-All files have been resized to 800px wide at 72% JPEG quality for bundling (~130KB each). Originals are higher-resolution at the linked Wikimedia pages.
+Re-run with `python3 extension/images/_fetch_unsplash.py --use-pawrora-env` to refresh.
