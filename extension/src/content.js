@@ -5,11 +5,23 @@
   const HAIKU_TARGET_ATTR = 'data-ai-holiday-haiku-target';   // on body-content element
   const HAIKU_PASS_ATTR = 'data-ai-holiday-haiku-pass';       // on post: '1' or '2'
   const ORIG_LENGTH_ATTR = 'data-ai-holiday-orig-length';     // on post: initial body length
+  const ORIG_WRAPPER_ATTR = 'data-ai-holiday-orig';           // hidden wrapper holding original live children
+  const INJECTED_ATTR = 'data-ai-holiday-injected';           // on the haiku element we add
   const HAIKU_CLASS = 'ai-holiday-haiku';
   const STYLE_ID = 'ai-holiday-styles';
   const SPEAKER_BTN_ID = 'ai-holiday-speaker';
   const AUDIO_ID = 'ai-holiday-audio';
   const DEMO_BODY_CLASS = 'ai-holiday-demo';
+  const DEMO_HIDE_ATTR = 'data-ai-holiday-demo-hide';
+  // In demo mode (URL contains #demo), feed posts NOT authored by one of these
+  // AI-influencer handles get hidden. Keeps the screenshot clean of your actual
+  // network and staged around public-figure AI content only.
+  const DEMO_WHITELIST = new Set([
+    'andrewyng', 'alliekmiller', 'emollick', 'kozyrkov', 'bernardmarr',
+    'yann-lecun', 'demishassabis', 'sundarpichai', 'satyanadella',
+    'samaltman', 'dario-amodei', 'reidhoffman',
+    'fei-fei-li-4541247', 'andrej-karpathy-9a650716',
+  ]);
   const AUDIO_BASE_VOLUME = 0.25;
   const AUDIO_PEAK_VOLUME = 0.90;
   const AUDIO_GAIN = 2.4;
@@ -29,7 +41,9 @@
 
   let patterns = null;
   let haikus = [];
-  let settings = { enabled: true, showIndicator: true, soundEnabled: false, demoMode: false };
+  // demoMode is NOT a user setting — it's a dev-only screenshot helper, activated by
+  // adding "#demo" to the URL (e.g., linkedin.com/feed#demo). Nothing in the popup UI.
+  let settings = { enabled: true, showIndicator: true, soundEnabled: false };
   let observer = null;
   let pendingRoots = null;
   let lastUrl = location.href;
@@ -131,8 +145,14 @@
       @keyframes ai-holiday-eq2 { 0%,100% { height: 3px; } 50% { height: 8px; } }
       @keyframes ai-holiday-eq3 { 0%,100% { height: 2px; } 50% { height: 7px; } }
 
-      body.${DEMO_BODY_CLASS} [aria-label]:not(#${SPEAKER_BTN_ID}):not(#${SPEAKER_BTN_ID} *) { filter: blur(5px); }
-      body.${DEMO_BODY_CLASS} img:not([${SWAPPED_IMG_ATTR}]):not(#${SPEAKER_BTN_ID} img) { filter: blur(8px); }
+      /* Demo mode: precisely target author/commenter identity. LinkedIn wraps every
+         person-name + avatar in an <a> to /in/… and company refs in /company/… .
+         Blurring those links (CSS filter propagates to descendants) catches both the
+         name text and the avatar image — while leaving post hero images, nav icons,
+         reactions, and UI chrome untouched. */
+      /* Demo mode = URL hash contains #demo. Posts that aren't from a whitelisted
+         AI influencer get marked and hidden. Everything else renders normally. */
+      body.${DEMO_BODY_CLASS} [${DEMO_HIDE_ATTR}] { display: none !important; }
     `;
     (document.head || document.documentElement).appendChild(style);
   }
@@ -253,10 +273,13 @@
     };
   }
 
-  // Replace the target element's children with one or two haikus.
-  // Pass "1" on first touch, "2" when LinkedIn expands the post ("See more").
+  // Replace the target element's visible content with a haiku, BUT preserve the
+  // original live DOM nodes (with their event handlers) inside a hidden wrapper.
+  // This lets "Read more" buttons, carousel arrows, reactions, etc. still work
+  // correctly after a revert — we just unhide them.
   function replacePostBodyWithHaiku(post, target) {
     if (!haikus.length || !target) return;
+
     // Detect whether this run is the initial render or an expansion.
     const priorPass = parseInt(post.getAttribute(HAIKU_PASS_ATTR) || '0', 10);
     const currentLen = target.textContent.length;
@@ -267,25 +290,33 @@
     } else {
       const origLen = parseInt(post.getAttribute(ORIG_LENGTH_ATTR) || String(currentLen), 10);
       const isExpansion = currentLen >= origLen * EXPANSION_RATIO && currentLen > EXPANSION_MIN_LEN;
-      newPass = isExpansion ? 2 : priorPass;   // stay at priorPass if it's just a rerender
+      newPass = isExpansion ? 2 : priorPass;
     }
 
-    // Preserve originalHTML once so we can revert.
-    if (target.dataset.aiHolidayOrigHtml === undefined) {
-      target.dataset.aiHolidayOrigHtml = target.innerHTML;
+    // On first touch: move all existing children (live nodes, handlers intact) into a
+    // hidden wrapper. Subsequent touches skip this — we already did it.
+    let wrapper = target.querySelector(`:scope > [${ORIG_WRAPPER_ATTR}]`);
+    if (!wrapper) {
+      wrapper = document.createElement('div');
+      wrapper.setAttribute(ORIG_WRAPPER_ATTR, '1');
+      wrapper.style.display = 'none';
+      while (target.firstChild) wrapper.appendChild(target.firstChild);
+      target.appendChild(wrapper);
     }
+
+    // Remove any previous injected haiku and add a fresh one.
+    const old = target.querySelector(`:scope > [${INJECTED_ATTR}]`);
+    if (old) old.remove();
 
     const picks = pickHaikus(post);
     const frag = document.createElement('div');
     frag.className = HAIKU_CLASS;
-    if (newPass === 2) {
-      frag.textContent = picks.primary + '\n\n' + picks.secondary;
-    } else {
-      frag.textContent = picks.primary;
-    }
-
-    target.innerHTML = '';
+    frag.setAttribute(INJECTED_ATTR, '1');
+    frag.textContent = newPass === 2
+      ? picks.primary + '\n\n' + picks.secondary
+      : picks.primary;
     target.appendChild(frag);
+
     target.setAttribute(HAIKU_TARGET_ATTR, '1');
     post.setAttribute(HAIKU_PASS_ATTR, String(newPass));
     post.setAttribute(TRANSFORMED_POST_ATTR, '1');
@@ -468,9 +499,47 @@
     return speakerBtn;
   }
 
+  function isDemoModeRequested() {
+    // URL hash trigger: "#demo" or "#demo-…" activates screenshot blur.
+    const h = (location.hash || '').toLowerCase();
+    return h === '#demo' || h.startsWith('#demo-') || h.includes('demo');
+  }
+
   function applyDemoMode() {
     if (!document.body) return;
-    document.body.classList.toggle(DEMO_BODY_CLASS, !!settings.demoMode && !!settings.enabled);
+    // Demo mode runs regardless of extension on/off — screenshot helper.
+    const on = isDemoModeRequested();
+    document.body.classList.toggle(DEMO_BODY_CLASS, on);
+    applyDemoWhitelist(on);
+  }
+
+  // Walk posts on the page. If any has an author link not in the whitelist, hide it.
+  // Whitelist-authored posts stay visible; posts we can't classify stay visible.
+  function applyDemoWhitelist(on) {
+    if (!on) {
+      for (const el of document.querySelectorAll(`[${DEMO_HIDE_ATTR}]`)) el.removeAttribute(DEMO_HIDE_ATTR);
+      return;
+    }
+    // verdict map: post element → 'keep' | 'hide'
+    const verdicts = new Map();
+    const authorLinks = document.querySelectorAll('a[href*="/in/"]');
+    for (const link of authorLinks) {
+      const post = findContainingPost(link);
+      if (!post) continue;
+      const href = link.getAttribute('href') || '';
+      const m = href.match(/\/in\/([^/?#]+)/);
+      if (!m) continue;
+      const handle = m[1].toLowerCase();
+      if (DEMO_WHITELIST.has(handle)) {
+        verdicts.set(post, 'keep');
+      } else if (!verdicts.has(post)) {
+        verdicts.set(post, 'hide');
+      }
+    }
+    for (const [post, verdict] of verdicts) {
+      if (verdict === 'hide') post.setAttribute(DEMO_HIDE_ATTR, '1');
+      else post.removeAttribute(DEMO_HIDE_ATTR);
+    }
   }
 
   function applySoundState() {
@@ -571,6 +640,9 @@
   function startHealthCheck() {
     if (healthCheckTimer) return;
     healthCheckTimer = setInterval(() => {
+      // Re-apply demo whitelist even if the extension is off, so the hide list
+      // stays current as the feed scrolls in new posts.
+      if (isDemoModeRequested()) applyDemoWhitelist(true);
       if (!settings.enabled || !patterns) return;
       if (!pendingRoots) scheduleProcess([document.body]);
       rescanTransformedPosts();
@@ -578,14 +650,18 @@
   }
 
   function revertAllReplacements() {
-    // Restore haiku-replaced post bodies from saved originalHTML
+    // Remove injected haikus + unhide the original wrapped children. Nodes are
+    // moved back by appendChild, which preserves all event handlers.
     const targets = document.querySelectorAll(`[${HAIKU_TARGET_ATTR}]`);
-    for (const t of targets) {
-      if (t.dataset.aiHolidayOrigHtml !== undefined) {
-        t.innerHTML = t.dataset.aiHolidayOrigHtml;
-        delete t.dataset.aiHolidayOrigHtml;
+    for (const target of targets) {
+      const injected = target.querySelector(`:scope > [${INJECTED_ATTR}]`);
+      if (injected) injected.remove();
+      const wrapper = target.querySelector(`:scope > [${ORIG_WRAPPER_ATTR}]`);
+      if (wrapper) {
+        while (wrapper.firstChild) target.appendChild(wrapper.firstChild);
+        wrapper.remove();
       }
-      t.removeAttribute(HAIKU_TARGET_ATTR);
+      target.removeAttribute(HAIKU_TARGET_ATTR);
     }
     for (const p of haikuReplacedPosts) {
       p.removeAttribute(HAIKU_PASS_ATTR);
@@ -693,8 +769,13 @@
 
   async function init() {
     const stored = await chrome.storage.sync.get({
-      enabled: true, showIndicator: true, soundEnabled: false, demoMode: false,
+      enabled: true, showIndicator: true, soundEnabled: false,
     });
+    // Demo mode is hash-driven; react to navigation that changes hash without reload.
+    window.addEventListener('hashchange', applyDemoMode);
+    // Independent poll — runs regardless of extension on/off so the demo whitelist
+    // stays current as feed posts lazy-load during scroll.
+    setInterval(() => { if (isDemoModeRequested()) applyDemoWhitelist(true); }, 3000);
     settings = stored;
     injectStyles();
     loadImageUrls();
@@ -714,8 +795,7 @@
       if (changes.enabled) settings.enabled = changes.enabled.newValue;
       if (changes.showIndicator) settings.showIndicator = changes.showIndicator.newValue;
       if (changes.soundEnabled) settings.soundEnabled = changes.soundEnabled.newValue;
-      if (changes.demoMode) settings.demoMode = changes.demoMode.newValue;
-      applyDemoMode();
+      applyDemoMode();   // re-evaluate in case `enabled` changed
 
       if (wasEnabled && !settings.enabled) {
         if (observer) { observer.disconnect(); observer = null; }
