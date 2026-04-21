@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Holiday from AI",
-  "version": "0.1.28",
+  "version": "0.2.0",
   "description": "Replaces all mentions of AI on LinkedIn with gardening folklore",
   "icons": {
     "16": "icons/icon-16.png",
@@ -29,7 +29,7 @@
   "host_permissions": ["https://*.linkedin.com/*"],
   "web_accessible_resources": [
     {
-      "resources": ["themes/analog-life.json", "images/*.jpg", "audio/*.mp3"],
+      "resources": ["themes/analog-life.json", "haikus.json", "images/*.jpg", "audio/*.mp3"],
       "matches": ["https://*.linkedin.com/*"]
     }
   ]

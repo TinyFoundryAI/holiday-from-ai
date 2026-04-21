@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.0 — 2026-04-21 — 🌱 Haiku mode
+
+**Breaking concept change.** The dictionary no longer replaces individual words; it now *detects* whether a LinkedIn post mentions AI and, if so, replaces the entire post body with a garden/nature haiku.
+
+- **100 haikus** bundled at `extension/haikus.json`, all garden/nature subjects, loose 5-7-5 English form.
+- **Detection**: the 203-entry dictionary is used as a trip-wire for text nodes. Bylines/chrome still excluded from triggering via `isLikelyBylineOrChrome`.
+- **Replacement target**: tightest common DOM ancestor of all AI-matched text nodes in a post. Works regardless of LinkedIn's hashed class names.
+- **Expansion handling**: when a post's "See more" is clicked and LinkedIn un-truncates the body, if the content grows past the stored original length × 1.5 and ≥ 300 chars we inject a *second* haiku separated by a blank line. Caps at 2.
+- **Deterministic picks**: post's `data-urn`/`data-id`/text-hash seeds the haiku index. Same post → same haiku across renders.
+- Image swap + sound swell + speaker button + demo mode all still work, triggered by the same detection signal.
+- Old behavior (word-for-word dictionary substitution, inline sprouts) removed.
+
 ## 0.1.20 — 2026-04-20
 - **Base soundtrack volume dropped** from 0.45 → 0.25 so empty-feed regions feel genuinely quiet. Peak remains 0.90 when AI posts are in view — swell is now more pronounced.
 - **Added 12 major AI industry figures.** Sam Altman → tulip baron, Jensen Huang → pitchfork baron, Elon Musk → bramble king, Dario Amodei → careful pruner, Demis Hassabis → head botanist, Mark Zuckerberg → communal gardener, Sundar Pichai → head arborist, Yann LeCun → garden skeptic, Geoffrey Hinton → orchard elder, Aravind Srinivas → ivy planter, Andrew Ng → gardening professor, Mustafa Suleyman → wandering plantsman.

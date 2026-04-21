@@ -11,9 +11,9 @@ Holiday from AI
 
 ## Summary (short description, ≤ 132 chars)
 ```
-A holiday from AI-LinkedIn-induced existential dread. Swaps every mention of AI with gardening folklore.
+Replaces every LinkedIn post about AI with a garden-themed haiku. A holiday from AI-induced existential dread.
 ```
-*(102 chars — well under limit)*
+*(110 chars)*
 
 ## Description (detailed, for the listing body)
 ```
@@ -21,23 +21,29 @@ Do you need a holiday from AI-LinkedIn-induced existential dread?
 
 Tired of getting tachycardia every Monday, after yet another weekend where you chose to enjoy spring with your loved ones (you fool — meanwhile your peers were setting up fully autonomous agentic side businesses)?
 
-Time to install Holiday from AI: a very green and touch-grassy Chrome extension that swaps every mention of AI on LinkedIn with gardening vocabulary.
+Time to install Holiday from AI: a very green and touch-grassy Chrome extension that replaces every LinkedIn post about AI with a short haiku about gardens and nature.
 
-• ChatGPT becomes a rhubarb patch
-• LLMs become compost heaps
-• Claude Code becomes an heirloom tomato
-• Sam Altman becomes the tulip chaser
-• Those "free 5-min Claude Cowork guide" infographics turn into pictures of vegetable gardens (the extension bundles real garden photos and swaps post images too)
+Example. Before:
+  "I've been deeply thinking about how agentic AI will transform enterprise workflow automation. Here are my 7 takeaways from a recent conversation with an LLM expert..."
 
-Over 200 translations total, covering AI companies, products, industry figures (Zuckerberg → Mark Zucchini, Musk → Melon Musk), reasoning models, French AI terminology, and whichever buzzword LinkedIn has discovered this week.
+After:
+  "Tomato vines heavy,
+  a bumblebee naps in shade
+  below the south wall"
 
-Bonus: an optional chirping-birds soundtrack that swells gently when there's a high concentration of AI posts in view, so you can close your eyes, forget about AGI, and keep enjoying spring.
+The extension bundles 100 haikus (loose 5-7-5 form, all garden and nature) and picks one deterministically per post — scrolling back up shows the same haiku, so your feed stays quiet. If the post is long and you click "See more," you get a second haiku.
 
-A small 🌱 marks every post the extension has touched. Toggle the whole thing on or off via the popup — "off" fully reverts the page and stops the birds.
+Detection powered by a 200+ entry AI-vocabulary dictionary: every model (GPT, Claude, Gemini, Mistral), company, industry figure, buzzword, and French AI term. If the post mentions AI in any language, haiku.
+
+Bonus features:
+• Post images also get swapped for real garden photos (potagers and lush gardens, bundled locally).
+• Optional chirping-birds soundtrack that swells gently when AI-heavy posts are in view, so you can close your eyes, forget about AGI, and keep enjoying spring.
+• Demo mode: blurs names and avatars while keeping haikus and garden images crisp, for sharing screenshots.
+• Toggle the whole thing on or off via the popup — "off" fully reverts the page and stops the birds.
 
 Everything runs locally in your browser. No data collected, no servers contacted, no telemetry. Open source.
 
-Built with heirloom tomato. Vibe-coded by TinyFoundry.
+Built with an heirloom tomato. Vibe-coded by TinyFoundry.
 ```
 
 ## Single-purpose statement
