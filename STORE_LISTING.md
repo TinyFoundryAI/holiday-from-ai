@@ -17,32 +17,32 @@ Replaces all AI-related content on LinkedIn with garden-themed haikus.
 
 ## Description (detailed, for the listing body)
 ```
-Do you need a holiday from AI-LinkedIn-induced existential dread?
+Do you need a holiday from AI-FOMO-LinkedIn?
 
-Tired of getting tachycardia every Monday, after yet another weekend where you chose to enjoy spring with your loved ones (you fool — meanwhile your peers were setting up fully autonomous agentic side businesses)?
+Tired of getting tachycardia every Monday, feeling like your peers have all been setting up fully autonomous agentic side businesses during the weekend?
 
 Time to install Holiday from AI: a very green and touch-grassy Chrome extension that replaces every LinkedIn post about AI with a short haiku about gardens and nature.
 
 Example. Before:
-  "I've been deeply thinking about how agentic AI will transform enterprise workflow automation. Here are my 7 takeaways from a recent conversation with an LLM expert..."
+"I've been deeply thinking about how agentic AI will transform enterprise workflow automation. Here are my 7 takeaways from a recent conversation with an LLM expert..."
 
 After:
-  "Tomato vines heavy,
-  a bumblebee naps in shade
-  below the south wall"
+"Tomato vines heavy,
+a bumblebee naps in shade
+below the south wall"
 
-The extension bundles 100 haikus (loose 5-7-5 form, all garden and nature) and picks one deterministically per post — scrolling back up shows the same haiku, so your feed stays quiet. If the post is long and you click "See more," you get a second haiku.
+The extension bundles 100 haikus (loose 5-7-5 form, all garden and nature).
 
 Detection powered by a 200+ entry AI-vocabulary dictionary: every model (GPT, Claude, Gemini, Mistral), company, industry figure, buzzword, and French AI term. If the post mentions AI in any language, haiku.
 
 Bonus features:
 • Post images also get swapped for real garden photos (potagers and lush gardens, bundled locally).
-• Optional chirping-birds soundtrack that swells gently when AI-heavy posts are in view, so you can close your eyes, forget about AGI, and keep enjoying spring.
-• Toggle the whole thing on or off via the popup — "off" fully reverts the page and stops the birds.
+• Optional chirping-birds soundtrack that swells gently when AI-heavy posts are in view, so you can close your eyes and forget about AGI.
+• Toggle the whole thing on or off via the popup: "off" fully reverts the page and stops the birds.
 
 Everything runs locally in your browser. No data collected, no servers contacted, no telemetry. Open source.
 
-Built with an heirloom tomato. Vibe-coded by TinyFoundry AI.
+Built by TinyFoundry AI.
 ```
 
 ## Single-purpose statement
@@ -62,12 +62,12 @@ Social & Communication
 
 ### storage
 ```
-Persists three user preferences (extension on/off, indicator visibility, sound on/off) via chrome.storage.sync so the user's settings follow their Google account across devices.
+Persists a single user preference (extension on/off) via chrome.storage.sync so the user's setting follows their Google account across devices.
 ```
 
 ### host permission: https://*.linkedin.com/*
 ```
-The extension's entire purpose is to read and modify the DOM of LinkedIn pages — specifically, replacing AI vocabulary with garden vocabulary in text nodes and swapping post images. This requires read/write access to pages served from linkedin.com. No other host is accessed.
+The extension's entire purpose is to read and modify the DOM of LinkedIn pages — specifically, detecting AI-related vocabulary in posts and replacing the post body with a garden-themed haiku, plus swapping post images and videos with bundled garden photos. This requires read/write access to pages served from linkedin.com. No other host is accessed.
 ```
 
 ---
@@ -81,7 +81,7 @@ The extension's entire purpose is to read and modify the DOM of LinkedIn pages �
 - **Do you use / transfer user data to determine creditworthiness or for lending purposes?** No.
 - **Do you sell user data?** No.
 
-Link to privacy policy: **[URL once you host PRIVACY.md — see PUBLISH.md]**
+Link to privacy policy: `https://github.com/TinyFoundryAI/holiday-from-ai/blob/main/PRIVACY.md`
 
 ---
 
@@ -90,9 +90,9 @@ Link to privacy policy: **[URL once you host PRIVACY.md — see PUBLISH.md]**
 Chrome requires at least 1 (up to 5) at **1280×800** or **640×400**.
 
 Capture these on a real LinkedIn tab with the extension loaded:
-1. **Feed scrolled** — showing multiple transformed posts with 🌱 markers and swapped images
-2. **A single transformed post** close-up — text clearly readable, shows AI→garden swap
-3. **The popup** — showing the three toggles
+1. **Feed scrolled** — showing multiple posts replaced with haikus and swapped images
+2. **A single transformed post** close-up — haiku text clearly readable, garden image visible
+3. **The popup** — showing the single Enabled/Disabled toggle
 4. **The speaker button** — mid-swell, ring visible
 5. **Before/after comparison** — split-screen or two panels
 
