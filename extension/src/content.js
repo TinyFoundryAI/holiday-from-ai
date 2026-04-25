@@ -2,37 +2,26 @@
   const SWEEP_BAR_CLASS = 'ai-holiday-sweep-bar';
   const SWAPPED_IMG_ATTR = 'data-ai-holiday-swapped';
   const TRANSFORMED_POST_ATTR = 'data-ai-holiday-transformed';
-  const HAIKU_TARGET_ATTR = 'data-ai-holiday-haiku-target';   // on body-content element
-  const HAIKU_PASS_ATTR = 'data-ai-holiday-haiku-pass';       // on post: '1' or '2'
-  const ORIG_LENGTH_ATTR = 'data-ai-holiday-orig-length';     // on post: initial body length
-  const ORIG_WRAPPER_ATTR = 'data-ai-holiday-orig';           // hidden wrapper holding original live children
-  const INJECTED_ATTR = 'data-ai-holiday-injected';           // on the haiku element we add
+  const HAIKU_TARGET_ATTR = 'data-ai-holiday-haiku-target';
+  const HAIKU_PASS_ATTR = 'data-ai-holiday-haiku-pass';
+  const ORIG_LENGTH_ATTR = 'data-ai-holiday-orig-length';
+  const ORIG_WRAPPER_ATTR = 'data-ai-holiday-orig';
+  const INJECTED_ATTR = 'data-ai-holiday-injected';
   const HAIKU_CLASS = 'ai-holiday-haiku';
   const STYLE_ID = 'ai-holiday-styles';
   const SPEAKER_BTN_ID = 'ai-holiday-speaker';
   const AUDIO_ID = 'ai-holiday-audio';
-  const DEMO_BODY_CLASS = 'ai-holiday-demo';
-  const DEMO_HIDE_ATTR = 'data-ai-holiday-demo-hide';
-  // In demo mode (URL contains #demo), feed posts NOT authored by one of these
-  // AI-influencer handles get hidden. Keeps the screenshot clean of your actual
-  // network and staged around public-figure AI content only.
-  const DEMO_WHITELIST = new Set([
-    'andrewyng', 'alliekmiller', 'emollick', 'kozyrkov', 'bernardmarr',
-    'yann-lecun', 'demishassabis', 'sundarpichai', 'satyanadella',
-    'samaltman', 'dario-amodei', 'reidhoffman',
-    'fei-fei-li-4541247', 'andrej-karpathy-9a650716',
-  ]);
   const AUDIO_BASE_VOLUME = 0.25;
   const AUDIO_PEAK_VOLUME = 0.90;
   const AUDIO_GAIN = 2.4;
   const POSTS_FOR_PEAK = 4;
   const VOLUME_RAMP_MS = 500;
   const VISIBILITY_THRESHOLD = 0.3;
-  const IMAGE_COUNT = 12;
+  const IMAGE_COUNT = 11;
   const MIN_IMAGE_DIM = 200;
   const MIN_POST_HEIGHT = 180;
-  const MAX_POST_HEIGHT = 3200;   // profile sections (About / Experience) can be quite tall
-  const MAX_POST_WIDTH = 1100;    // profile main column can be ~1000px
+  const MAX_POST_HEIGHT = 3200;
+  const MAX_POST_WIDTH = 1100;
   const SWEEP_DURATION_MS = 1400;
   const NAV_RESCAN_DELAY_MS = 400;
   const HEALTH_CHECK_INTERVAL_MS = 5000;
@@ -41,9 +30,9 @@
 
   let patterns = null;
   let haikus = [];
-  // demoMode is NOT a user setting — it's a dev-only screenshot helper, activated by
-  // adding "#demo" to the URL (e.g., linkedin.com/feed#demo). Nothing in the popup UI.
-  let settings = { enabled: true, showIndicator: true, soundEnabled: false };
+  let settings = { enabled: true };
+  let soundMuted = false;
+  let gestureListenerAttached = false;
   let observer = null;
   let pendingRoots = null;
   let lastUrl = location.href;
@@ -56,7 +45,7 @@
   let postVisibilityObserver = null;
   let visiblePosts = new Set();
   let volumeAnimRAF = null;
-  let haikuReplacedPosts = new Set();   // posts whose body we've replaced (for revert)
+  let haikuReplacedPosts = new Set();
 
   function injectStyles() {
     if (document.getElementById(STYLE_ID)) return;
@@ -144,15 +133,6 @@
       @keyframes ai-holiday-eq1 { 0%,100% { height: 2px; } 50% { height: 6px; } }
       @keyframes ai-holiday-eq2 { 0%,100% { height: 3px; } 50% { height: 8px; } }
       @keyframes ai-holiday-eq3 { 0%,100% { height: 2px; } 50% { height: 7px; } }
-
-      /* Demo mode: precisely target author/commenter identity. LinkedIn wraps every
-         person-name + avatar in an <a> to /in/… and company refs in /company/… .
-         Blurring those links (CSS filter propagates to descendants) catches both the
-         name text and the avatar image — while leaving post hero images, nav icons,
-         reactions, and UI chrome untouched. */
-      /* Demo mode = URL hash contains #demo. Posts that aren't from a whitelisted
-         AI influencer get marked and hidden. Everything else renders normally. */
-      body.${DEMO_BODY_CLASS} [${DEMO_HIDE_ATTR}] { display: none !important; }
     `;
     (document.head || document.documentElement).appendChild(style);
   }
@@ -183,8 +163,6 @@
     return Math.abs(h);
   }
 
-  // Detection: does this text contain any AI vocabulary? We reuse the compiled dictionary
-  // patterns as a trip-wire — we don't replace the words anymore.
   function textHasAITerms(text) {
     if (!patterns || !text) return false;
     for (const { regex } of patterns) {
@@ -194,28 +172,6 @@
     return false;
   }
 
-  function escapeHTML(s) {
-    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  }
-
-  // Walk up from a text node. Author bylines (links, buttons, aria-labeled chrome)
-  // shouldn't count as "this post mentions AI" — just because the user's title has
-  // "AI" in it doesn't make every post of theirs a haiku candidate.
-  function isLikelyBylineOrChrome(textNode) {
-    let el = textNode.parentElement;
-    for (let i = 0; i < 6 && el; i++) {
-      const tag = el.tagName;
-      if (tag === 'A' || tag === 'BUTTON') return true;
-      if (tag && /^H[1-6]$/.test(tag)) return true;
-      if (el.hasAttribute && el.hasAttribute('aria-label')) return true;
-      const role = el.getAttribute && el.getAttribute('role');
-      if (role && /^(link|button|menu|menuitem|heading|tab|navigation)$/.test(role)) return true;
-      el = el.parentElement;
-    }
-    return false;
-  }
-
-  // Geometric post detection — LinkedIn hashes class names, so we match by shape.
   function findContainingPost(node) {
     let el = node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
     if (!el) return null;
@@ -233,8 +189,6 @@
     return null;
   }
 
-  // Find the tightest common ancestor of all AI-mentioning text nodes within a post.
-  // That element IS the post's body content — where the haiku goes.
   function findHaikuTarget(post, aiTextNodes) {
     if (!aiTextNodes.length) return null;
     if (aiTextNodes.length === 1) return aiTextNodes[0].parentElement || post;
@@ -273,14 +227,12 @@
     };
   }
 
-  // Replace the target element's visible content with a haiku, BUT preserve the
-  // original live DOM nodes (with their event handlers) inside a hidden wrapper.
-  // This lets "Read more" buttons, carousel arrows, reactions, etc. still work
-  // correctly after a revert — we just unhide them.
+  // Replace the target element's visible content with a haiku, but preserve the
+  // original live DOM nodes (with their event handlers) inside a hidden wrapper
+  // so revert restores fully-working LinkedIn UI.
   function replacePostBodyWithHaiku(post, target) {
     if (!haikus.length || !target) return;
 
-    // Detect whether this run is the initial render or an expansion.
     const priorPass = parseInt(post.getAttribute(HAIKU_PASS_ATTR) || '0', 10);
     const currentLen = target.textContent.length;
     let newPass;
@@ -293,8 +245,6 @@
       newPass = isExpansion ? 2 : priorPass;
     }
 
-    // On first touch: move all existing children (live nodes, handlers intact) into a
-    // hidden wrapper. Subsequent touches skip this — we already did it.
     let wrapper = target.querySelector(`:scope > [${ORIG_WRAPPER_ATTR}]`);
     if (!wrapper) {
       wrapper = document.createElement('div');
@@ -304,7 +254,6 @@
       target.appendChild(wrapper);
     }
 
-    // Remove any previous injected haiku and add a fresh one.
     const old = target.querySelector(`:scope > [${INJECTED_ATTR}]`);
     if (old) old.remove();
 
@@ -353,8 +302,6 @@
     return swapped;
   }
 
-  // Replace any <video> in a post with a still garden image (same bounding size).
-  // LinkedIn often embeds auto-playing videos; we silence them by swapping to a poster-only image.
   function swapPostVideos(post, base, idxStart) {
     if (!post || gardenImageUrls.length === 0) return;
     const videos = post.querySelectorAll('video');
@@ -365,20 +312,17 @@
       const w = rect.width || video.clientWidth || video.videoWidth || 0;
       const h = rect.height || video.clientHeight || video.videoHeight || 0;
       if (w < MIN_IMAGE_DIM || h < MIN_IMAGE_DIM) { idx++; continue; }
-      // Stop the video, strip its sources, replace poster with a garden image.
       try { video.pause(); } catch (e) {}
       video.removeAttribute('autoplay');
       video.muted = true;
       video.loop = false;
       const pick = gardenImageUrls[(base + idx) % gardenImageUrls.length];
-      // Save originals for revert
       video.dataset.aiHolidayOrigPoster = video.getAttribute('poster') || '';
       video.dataset.aiHolidayOrigSrc = video.getAttribute('src') || '';
       video.setAttribute('poster', pick);
       video.removeAttribute('src');
-      // Remove any <source> children so the browser can't re-derive the video
       for (const source of video.querySelectorAll('source')) source.remove();
-      video.load();   // force poster to display
+      video.load();
       video.setAttribute(SWAPPED_IMG_ATTR, '1');
       idx++;
     }
@@ -389,7 +333,7 @@
     for (const post of posts) swapPostImages(post);
   }
 
-  // --- Audio + speaker button (unchanged from previous versions) ---
+  // --- Audio + speaker button ---
 
   function ensureAudio() {
     if (audioEl) return audioEl;
@@ -458,10 +402,9 @@
 
   function updateSpeakerUI() {
     if (!speakerBtn) return;
-    const muted = !settings.soundEnabled;
-    speakerBtn.classList.toggle('is-muted', muted);
-    speakerBtn.classList.toggle('is-playing', !muted);
-    speakerBtn.title = muted ? 'Play garden soundtrack' : 'Mute garden soundtrack';
+    speakerBtn.classList.toggle('is-muted', soundMuted);
+    speakerBtn.classList.toggle('is-playing', !soundMuted);
+    speakerBtn.title = soundMuted ? 'Unmute garden soundtrack' : 'Mute garden soundtrack';
     speakerBtn.setAttribute('aria-label', speakerBtn.title);
   }
 
@@ -489,64 +432,36 @@
     for (let i = 0; i < 3; i++) eq.appendChild(document.createElement('span'));
     speakerBtn.append(glow, bg, ring, content, notes, eq);
     speakerBtn.addEventListener('click', () => {
-      const next = !settings.soundEnabled;
-      chrome.storage.sync.set({ soundEnabled: next });
-      settings.soundEnabled = next;
+      soundMuted = !soundMuted;
       applySoundState();
     });
+    speakerBtn.style.display = settings.enabled ? '' : 'none';
     (document.body || document.documentElement).appendChild(speakerBtn);
     updateSpeakerUI(); updateSpeakerSwell();
     return speakerBtn;
   }
 
-  function isDemoModeRequested() {
-    // URL hash trigger: "#demo" or "#demo-…" activates screenshot blur.
-    const h = (location.hash || '').toLowerCase();
-    return h === '#demo' || h.startsWith('#demo-') || h.includes('demo');
-  }
-
-  function applyDemoMode() {
-    if (!document.body) return;
-    // Demo mode runs regardless of extension on/off — screenshot helper.
-    const on = isDemoModeRequested();
-    document.body.classList.toggle(DEMO_BODY_CLASS, on);
-    applyDemoWhitelist(on);
-  }
-
-  // Walk posts on the page. If any has an author link not in the whitelist, hide it.
-  // Whitelist-authored posts stay visible; posts we can't classify stay visible.
-  function applyDemoWhitelist(on) {
-    if (!on) {
-      for (const el of document.querySelectorAll(`[${DEMO_HIDE_ATTR}]`)) el.removeAttribute(DEMO_HIDE_ATTR);
-      return;
-    }
-    // verdict map: post element → 'keep' | 'hide'
-    const verdicts = new Map();
-    const authorLinks = document.querySelectorAll('a[href*="/in/"]');
-    for (const link of authorLinks) {
-      const post = findContainingPost(link);
-      if (!post) continue;
-      const href = link.getAttribute('href') || '';
-      const m = href.match(/\/in\/([^/?#]+)/);
-      if (!m) continue;
-      const handle = m[1].toLowerCase();
-      if (DEMO_WHITELIST.has(handle)) {
-        verdicts.set(post, 'keep');
-      } else if (!verdicts.has(post)) {
-        verdicts.set(post, 'hide');
-      }
-    }
-    for (const [post, verdict] of verdicts) {
-      if (verdict === 'hide') post.setAttribute(DEMO_HIDE_ATTR, '1');
-      else post.removeAttribute(DEMO_HIDE_ATTR);
-    }
+  // Chrome autoplay blocks play() until the user interacts with the page. If play
+  // is rejected, we hook a one-shot listener for the next click/keydown anywhere
+  // and retry — sound "auto-starts" as soon as the user does anything.
+  function attachAutoplayGestureListener() {
+    if (gestureListenerAttached) return;
+    gestureListenerAttached = true;
+    const onGesture = () => {
+      document.removeEventListener('click', onGesture);
+      document.removeEventListener('keydown', onGesture);
+      gestureListenerAttached = false;
+      applySoundState();
+    };
+    document.addEventListener('click', onGesture);
+    document.addEventListener('keydown', onGesture);
   }
 
   function applySoundState() {
     ensureSpeakerButton();
     updateSpeakerUI();
     if (speakerBtn) speakerBtn.style.display = settings.enabled ? '' : 'none';
-    const shouldPlay = settings.enabled && settings.soundEnabled;
+    const shouldPlay = settings.enabled && !soundMuted;
     if (shouldPlay) {
       const a = ensureAudio();
       ensureAudioGraph();
@@ -555,14 +470,8 @@
       const p = a.play();
       if (p && typeof p.catch === 'function') {
         p.catch(err => {
-          // Chrome blocks autoplay on fresh page loads. Revert UI + stored setting
-          // to muted so the button accurately reflects that audio is silent, and the
-          // user's next click starts audio fresh.
-          console.warn('[Holiday from AI] audio play blocked (autoplay policy):', err.name);
-          settings.soundEnabled = false;
-          chrome.storage.sync.set({ soundEnabled: false }).catch(() => {});
-          updateSpeakerUI();
-          if (audioEl) audioEl.pause();
+          console.warn('[Holiday from AI] audio autoplay blocked — will start on first user gesture:', err.name);
+          attachAutoplayGestureListener();
         });
       }
     } else if (audioEl) {
@@ -640,29 +549,28 @@
   function startHealthCheck() {
     if (healthCheckTimer) return;
     healthCheckTimer = setInterval(() => {
-      // Re-apply demo whitelist even if the extension is off, so the hide list
-      // stays current as the feed scrolls in new posts.
-      if (isDemoModeRequested()) applyDemoWhitelist(true);
       if (!settings.enabled || !patterns) return;
       if (!pendingRoots) scheduleProcess([document.body]);
       rescanTransformedPosts();
+      // LinkedIn's SPA can detach our button during heavy re-renders; re-attach if so.
+      if (!speakerBtn || !speakerBtn.isConnected) {
+        speakerBtn = null;
+        ensureSpeakerButton();
+        updateSpeakerUI();
+      }
     }, HEALTH_CHECK_INTERVAL_MS);
   }
 
   function revertAllReplacements() {
-    // Remove injected haikus + unhide the original wrapped children. Nodes are
-    // moved back by appendChild, which preserves all event handlers.
-    const targets = document.querySelectorAll(`[${HAIKU_TARGET_ATTR}]`);
-    for (const target of targets) {
-      const injected = target.querySelector(`:scope > [${INJECTED_ATTR}]`);
-      if (injected) injected.remove();
-      const wrapper = target.querySelector(`:scope > [${ORIG_WRAPPER_ATTR}]`);
-      if (wrapper) {
-        while (wrapper.firstChild) target.appendChild(wrapper.firstChild);
-        wrapper.remove();
+    for (const el of document.querySelectorAll(`[${INJECTED_ATTR}]`)) el.remove();
+    for (const wrapper of document.querySelectorAll(`[${ORIG_WRAPPER_ATTR}]`)) {
+      const parent = wrapper.parentElement;
+      if (parent) {
+        while (wrapper.firstChild) parent.appendChild(wrapper.firstChild);
       }
-      target.removeAttribute(HAIKU_TARGET_ATTR);
+      wrapper.remove();
     }
+    for (const t of document.querySelectorAll(`[${HAIKU_TARGET_ATTR}]`)) t.removeAttribute(HAIKU_TARGET_ATTR);
     for (const p of haikuReplacedPosts) {
       p.removeAttribute(HAIKU_PASS_ATTR);
       p.removeAttribute(ORIG_LENGTH_ATTR);
@@ -697,7 +605,6 @@
     if (postVisibilityObserver) { postVisibilityObserver.disconnect(); postVisibilityObserver = null; }
   }
 
-  // Sweep animation — iterate posts in visual order and haiku-replace them as the bar passes.
   function sweepTransform() {
     if (!patterns || !haikus.length) return;
     if (document.querySelector(`.${SWEEP_BAR_CLASS}`)) return;
@@ -711,7 +618,6 @@
 
     injectStyles();
 
-    // Collect all AI-mentioning posts once, pair each with its target + Y position.
     const nodes = collectTextNodes(document.body);
     const postMap = new Map();
     for (const node of nodes) {
@@ -768,22 +674,16 @@
   }
 
   async function init() {
-    const stored = await chrome.storage.sync.get({
-      enabled: true, showIndicator: true, soundEnabled: false,
-    });
-    // Demo mode is hash-driven; react to navigation that changes hash without reload.
-    window.addEventListener('hashchange', applyDemoMode);
-    // Independent poll — runs regardless of extension on/off so the demo whitelist
-    // stays current as feed posts lazy-load during scroll.
-    setInterval(() => { if (isDemoModeRequested()) applyDemoWhitelist(true); }, 3000);
+    const stored = await chrome.storage.sync.get({ enabled: true });
     settings = stored;
     injectStyles();
+    // Render the speaker button immediately so it's visible even if the dictionary
+    // or haiku JSON fetch later fails. Audio playback waits until those resolve.
+    ensureSpeakerButton();
     loadImageUrls();
     const [dictPatterns] = await Promise.all([loadDictionary(), loadHaikus()]);
     patterns = dictPatterns;
-    ensureSpeakerButton();
     applySoundState();
-    applyDemoMode();
     console.log(`[Holiday from AI] ready — ${haikus.length} haikus, ${gardenImageUrls.length} images, enabled=${settings.enabled}`);
     if (settings.enabled) {
       sweepTransform();
@@ -793,9 +693,6 @@
       if (area !== 'sync') return;
       const wasEnabled = settings.enabled;
       if (changes.enabled) settings.enabled = changes.enabled.newValue;
-      if (changes.showIndicator) settings.showIndicator = changes.showIndicator.newValue;
-      if (changes.soundEnabled) settings.soundEnabled = changes.soundEnabled.newValue;
-      applyDemoMode();   // re-evaluate in case `enabled` changed
 
       if (wasEnabled && !settings.enabled) {
         if (observer) { observer.disconnect(); observer = null; }

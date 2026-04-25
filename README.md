@@ -70,4 +70,4 @@ MIT. See `LICENSE`.
 
 ---
 
-Built by [TinyFoundry](https://tinyfoundry.ai). Vibe-coded.
+Built by [TinyFoundry AI](https://tinyfoundry.ai). Vibe-coded.

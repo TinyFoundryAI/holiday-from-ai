@@ -15,7 +15,6 @@ Per the Unsplash License they're free to use; credit below as courtesy.
 | garden-8.jpg | [view](https://unsplash.com/photos/a-small-green-house-in-a-field-of-tall-grass-8xfkyZxi1Us) | [Michael Förtsch](https://unsplash.com/@michael_f) |
 | garden-9.jpg | [view](https://unsplash.com/photos/green-plants-on-black-metal-train-rail-during-daytime-bk11wZwb9F4) | [Markus Spiske](https://unsplash.com/@markusspiske) |
 | garden-10.jpg | [view](https://unsplash.com/photos/a-group-of-purple-flowers-PEPUUIbJUYU) | [Nancy Hughes](https://unsplash.com/@mostlymarvelling) |
-| garden-11.jpg | [view](https://unsplash.com/photos/brown-wooden-welcome-signage-on-green-plants-eL4ADAsiOR8) | [David Clode](https://unsplash.com/@davidclode) |
-| garden-12.jpg | [view](https://unsplash.com/photos/female-statue-near-pon-G-Y4Cz2Mrn0) | [Wonderlane](https://unsplash.com/@wonderlane) |
+| garden-11.jpg | [view](https://unsplash.com/photos/female-statue-near-pon-G-Y4Cz2Mrn0) | [Wonderlane](https://unsplash.com/@wonderlane) |
 
 Re-run with `python3 extension/images/_fetch_unsplash.py --use-pawrora-env` to refresh.

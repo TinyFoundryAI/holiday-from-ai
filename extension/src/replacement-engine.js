@@ -18,25 +18,6 @@
     return letters === letters.toUpperCase();
   }
 
-  function preserveCase(original, replacement) {
-    if (!/[A-Za-z]/.test(original)) return replacement;
-
-    const isAllCaps = original === original.toUpperCase() && original.length > 1;
-
-    // Short acronyms: use replacement as-is. "AI" → "gardening", never "GARDENING".
-    if (isAllCaps && isShortAcronym(original)) return replacement;
-
-    // Longer all-caps source (user is genuinely shouting): preserve the shout.
-    if (isAllCaps) return replacement.toUpperCase();
-
-    // Title-case source: capitalize replacement first letter.
-    if (original[0] === original[0].toUpperCase() && original[0] !== original[0].toLowerCase()) {
-      return replacement[0].toUpperCase() + replacement.slice(1);
-    }
-
-    return replacement;
-  }
-
   function compile(dictionary) {
     const keys = Object.keys(dictionary).sort((a, b) => b.length - a.length);
     return keys.map(key => {
@@ -49,33 +30,6 @@
     });
   }
 
-  const SPROUT = '\u{1F331}';
-  const SPROUT_RE = new RegExp(`\\s?${SPROUT}`, 'gu');
-
-  // Strip any trailing sprout we previously added, so re-running replaceText on the
-  // same node (health-check, SPA nav) doesn't accumulate duplicate glyphs.
-  function stripSprout(str) {
-    return str.replace(SPROUT_RE, '');
-  }
-
-  function replaceText(input, patterns, opts) {
-    const hadSprout = input.indexOf(SPROUT) !== -1;
-    let output = stripSprout(input);
-    let replaced = false;
-    for (const { regex, replacement } of patterns) {
-      output = output.replace(regex, match => {
-        replaced = true;
-        return preserveCase(match, replacement);
-      });
-    }
-    // Append a single sprout if this node had one OR we just replaced AI terms — and indicator is on.
-    const shouldSprout = (replaced || hadSprout) && opts && opts.indicator;
-    if (shouldSprout) {
-      output = `${output} ${SPROUT}`;
-    }
-    return { output, changed: output !== input };
-  }
-
   function shouldSkipNode(node) {
     let parent = node.parentElement;
     while (parent) {
@@ -86,5 +40,5 @@
     return false;
   }
 
-  globalThis.AIHolidayEngine = { compile, replaceText, shouldSkipNode };
+  globalThis.AIHolidayEngine = { compile, shouldSkipNode };
 })();

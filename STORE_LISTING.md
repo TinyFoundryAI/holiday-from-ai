@@ -38,12 +38,11 @@ Detection powered by a 200+ entry AI-vocabulary dictionary: every model (GPT, Cl
 Bonus features:
 • Post images also get swapped for real garden photos (potagers and lush gardens, bundled locally).
 • Optional chirping-birds soundtrack that swells gently when AI-heavy posts are in view, so you can close your eyes, forget about AGI, and keep enjoying spring.
-• Demo mode: blurs names and avatars while keeping haikus and garden images crisp, for sharing screenshots.
 • Toggle the whole thing on or off via the popup — "off" fully reverts the page and stops the birds.
 
 Everything runs locally in your browser. No data collected, no servers contacted, no telemetry. Open source.
 
-Built with an heirloom tomato. Vibe-coded by TinyFoundry.
+Built with an heirloom tomato. Vibe-coded by TinyFoundry AI.
 ```
 
 ## Single-purpose statement

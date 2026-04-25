@@ -1,18 +1,16 @@
 (async function () {
   const enabledEl = document.getElementById('enabled');
-  const indicatorEl = document.getElementById('showIndicator');
-  const soundEl = document.getElementById('soundEnabled');
+  const titleEl = document.querySelector('.switch-title');
 
-  const state = await chrome.storage.sync.get({
-    enabled: true,
-    showIndicator: true,
-    soundEnabled: false,
-  });
+  function render(enabled) {
+    if (titleEl) titleEl.textContent = enabled ? 'Enabled' : 'Disabled';
+  }
+
+  const state = await chrome.storage.sync.get({ enabled: true });
   enabledEl.checked = state.enabled;
-  indicatorEl.checked = state.showIndicator;
-  soundEl.checked = state.soundEnabled;
-
-  enabledEl.addEventListener('change', () => chrome.storage.sync.set({ enabled: enabledEl.checked }));
-  indicatorEl.addEventListener('change', () => chrome.storage.sync.set({ showIndicator: indicatorEl.checked }));
-  soundEl.addEventListener('change', () => chrome.storage.sync.set({ soundEnabled: soundEl.checked }));
+  render(state.enabled);
+  enabledEl.addEventListener('change', () => {
+    chrome.storage.sync.set({ enabled: enabledEl.checked });
+    render(enabledEl.checked);
+  });
 })();
