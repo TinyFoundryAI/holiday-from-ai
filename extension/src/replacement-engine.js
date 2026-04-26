@@ -18,15 +18,13 @@
     return letters === letters.toUpperCase();
   }
 
-  // Accepts a flat array of detection terms. The dictionary is a tripwire — we no
-  // longer substitute words, just check whether the post mentions any of them.
-  function compile(terms) {
-    const cleaned = terms.filter(t => typeof t === 'string' && t.trim().length > 0);
-    const sorted = cleaned.sort((a, b) => b.length - a.length);
-    return sorted.map(key => {
+  function compile(dictionary) {
+    const keys = Object.keys(dictionary).sort((a, b) => b.length - a.length);
+    return keys.map(key => {
       const flags = isShortAcronym(key) ? 'g' : 'gi';
       return {
         key,
+        replacement: dictionary[key],
         regex: new RegExp(`\\b${escapeRegex(key)}\\b`, flags)
       };
     });
