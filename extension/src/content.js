@@ -19,7 +19,7 @@
   const VISIBILITY_THRESHOLD = 0.3;
   const IMAGE_COUNT = 11;
   const MIN_IMAGE_DIM = 200;
-  const MIN_POST_HEIGHT = 180;
+  const MIN_POST_HEIGHT = 100;
   const MAX_POST_HEIGHT = 3200;
   const MAX_POST_WIDTH = 1100;
   const SWEEP_DURATION_MS = 1400;
@@ -63,6 +63,7 @@
       }
       .${HAIKU_CLASS} {
         font-style: italic;
+        font-size: 15px;
         line-height: 1.65;
         white-space: pre-line;
         padding: 4px 0 6px;
@@ -172,21 +173,117 @@
     return false;
   }
 
+  // Returns the LinkedIn post element containing the given node. Primary path:
+  // walk up to the first ancestor whose data-urn / data-id matches a post URN
+  // (urn:li:activity, urn:li:share, etc). For surfaces that don't tag content
+  // with URNs (profile About / Experience), fall back to a geometric search.
   function findContainingPost(node) {
     let el = node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
     if (!el) return null;
     let cursor = el;
+    while (cursor && cursor !== document.body) {
+      const urn = getElementUrn(cursor);
+      if (urn && POST_URN_RE.test(urn)) {
+        const rect = cursor.getBoundingClientRect();
+        if (rect.height >= MIN_POST_HEIGHT
+            && rect.height <= MAX_POST_HEIGHT
+            && rect.width > 0
+            && rect.width <= MAX_POST_WIDTH) {
+          return cursor;
+        }
+        // URN matches but geometry rejects (collapsed / hidden post). Don't keep
+        // walking past it into a feed wrapper — return null instead.
+        return null;
+      }
+      cursor = cursor.parentElement;
+    }
+    return findGeometricPost(node);
+  }
+
+  // Geometric fallback for surfaces without post URNs (profile sections etc.).
+  // Walks up keeping the outermost post-shaped ancestor.
+  function findGeometricPost(node) {
+    let el = node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
+    if (!el) return null;
+    let cursor = el;
+    let bestCandidate = null;
     while (cursor && cursor !== document.body) {
       const rect = cursor.getBoundingClientRect();
       if (rect.height >= MIN_POST_HEIGHT
           && rect.height <= MAX_POST_HEIGHT
           && rect.width > 0
           && rect.width <= MAX_POST_WIDTH) {
-        return cursor;
+        bestCandidate = cursor;
       }
       cursor = cursor.parentElement;
     }
-    return null;
+    return bestCandidate;
+  }
+
+  // True if this text node lives inside our own injected DOM (the hidden wrapper
+  // of original content, the haiku div, or a post we've marked transformed). With
+  // this check, the mutation observer can stay connected during processing — our
+  // own DOM additions don't trigger feedback loops.
+  function isInsideTransformedPost(node) {
+    let el = node.parentElement;
+    while (el) {
+      if (el.hasAttribute && (
+        el.hasAttribute(ORIG_WRAPPER_ATTR) ||
+        el.hasAttribute(TRANSFORMED_POST_ATTR) ||
+        el.hasAttribute(INJECTED_ATTR)
+      )) return true;
+      el = el.parentElement;
+    }
+    return false;
+  }
+
+  // LinkedIn tags shareable post objects with a URN. These patterns map to
+  // first-class posts; comments use urn:li:comment:..., reactions use
+  // urn:li:reaction:..., and we filter those out.
+  const POST_URN_RE = /^urn:li:(activity|share|ugcPost|groupPost|article)\b/;
+  const COMMENT_URN_RE = /^urn:li:comment\b/;
+
+  function getElementUrn(el) {
+    if (!el || !el.getAttribute) return '';
+    return el.getAttribute('data-urn') || el.getAttribute('data-id') || '';
+  }
+
+  // Skip AI text that's inside profile-link bylines, action buttons, or headings.
+  // We only treat <a> as chrome when it points to a LinkedIn profile/company/etc.
+  // surface — inline body links to external articles are NOT skipped, so a post
+  // that links out to an AI article still triggers detection on its own body.
+  function isLikelyBylineOrChrome(textNode) {
+    let el = textNode.parentElement;
+    for (let i = 0; i < 6 && el; i++) {
+      const tag = el.tagName;
+      if (tag && /^H[1-6]$/.test(tag)) return true;
+      if (tag === 'BUTTON') return true;
+      if (tag === 'A') {
+        const href = el.getAttribute('href') || '';
+        if (/^\/(in|company|school|hashtag|jobs|events|groups|newsletters)\//.test(href)) return true;
+      }
+      const role = el.getAttribute && el.getAttribute('role');
+      if (role && /^(button|menu|menuitem|heading|tab)$/.test(role)) return true;
+      el = el.parentElement;
+    }
+    return false;
+  }
+
+  // True if this text node lives inside a LinkedIn comment. We walk up looking
+  // for the first URN ancestor: if it's a comment URN, the node is in a comment;
+  // if it's a post URN, the node is in the post body itself (not a comment).
+  // Pure attribute walk — no layout reads — so it stays cheap on long feeds.
+  function isInsideComment(node) {
+    let el = node.parentElement;
+    while (el && el !== document.body) {
+      const urn = getElementUrn(el);
+      if (urn) {
+        if (COMMENT_URN_RE.test(urn)) return true;
+        if (POST_URN_RE.test(urn)) return false;
+      }
+      el = el.parentElement;
+    }
+    return false;
   }
 
   function findHaikuTarget(post, aiTextNodes) {
@@ -252,6 +349,16 @@
       wrapper.style.display = 'none';
       while (target.firstChild) wrapper.appendChild(target.firstChild);
       target.appendChild(wrapper);
+    } else {
+      // Re-entry: LinkedIn's React may have injected new direct children into
+      // target between our calls (e.g. a "See more" expansion or a re-render
+      // between mount cycles). Sweep them into the wrapper so they don't bleed
+      // through alongside the haiku.
+      for (const child of Array.from(target.children)) {
+        if (child === wrapper) continue;
+        if (child.hasAttribute && child.hasAttribute(INJECTED_ATTR)) continue;
+        wrapper.appendChild(child);
+      }
     }
 
     const old = target.querySelector(`:scope > [${INJECTED_ATTR}]`);
@@ -443,18 +550,25 @@
 
   // Chrome autoplay blocks play() until the user interacts with the page. If play
   // is rejected, we hook a one-shot listener for the next click/keydown anywhere
-  // and retry — sound "auto-starts" as soon as the user does anything.
+  // and retry — sound "auto-starts" as soon as the user does anything. We hold a
+  // reference to the bound handler so we can detach it on extension disable.
+  let onGestureHandler = null;
   function attachAutoplayGestureListener() {
     if (gestureListenerAttached) return;
     gestureListenerAttached = true;
-    const onGesture = () => {
-      document.removeEventListener('click', onGesture);
-      document.removeEventListener('keydown', onGesture);
-      gestureListenerAttached = false;
+    onGestureHandler = () => {
+      detachAutoplayGestureListener();
       applySoundState();
     };
-    document.addEventListener('click', onGesture);
-    document.addEventListener('keydown', onGesture);
+    document.addEventListener('click', onGestureHandler);
+    document.addEventListener('keydown', onGestureHandler);
+  }
+  function detachAutoplayGestureListener() {
+    if (!gestureListenerAttached || !onGestureHandler) return;
+    document.removeEventListener('click', onGestureHandler);
+    document.removeEventListener('keydown', onGestureHandler);
+    gestureListenerAttached = false;
+    onGestureHandler = null;
   }
 
   function applySoundState() {
@@ -487,6 +601,9 @@
     const nodes = collectTextNodes(root);
     const postToAINodes = new Map();
     for (const node of nodes) {
+      if (isInsideTransformedPost(node)) continue;
+      if (isLikelyBylineOrChrome(node)) continue;
+      if (isInsideComment(node)) continue;
       if (!textHasAITerms(node.nodeValue)) continue;
       const post = findContainingPost(node);
       if (!post) continue;
@@ -497,9 +614,32 @@
       const target = findHaikuTarget(post, aiNodes);
       if (!target) continue;
       const wasTransformed = post.hasAttribute(TRANSFORMED_POST_ATTR);
-      replacePostBodyWithHaiku(post, target);
+      // Swap images first: once we replace the body, any images inside it are
+      // hidden (display:none → 0×0 rect) and imageIsLargeEnough rejects them.
       swapPostImages(post);
+      replacePostBodyWithHaiku(post, target);
       if (!wasTransformed) trackTransformedPost(post);
+    }
+    checkExpansionsForTransformedPosts();
+  }
+
+  // Periodically check whether any transformed post's hidden original has grown
+  // (user clicked "See more"). If so, upgrade to a two-haiku version. This was
+  // previously inline in replacePostBodyWithHaiku, but moving it out lets us skip
+  // wrapped text nodes during regular detection — preventing the feed-wipe bug.
+  function checkExpansionsForTransformedPosts() {
+    for (const post of haikuReplacedPosts) {
+      const priorPass = parseInt(post.getAttribute(HAIKU_PASS_ATTR) || '0', 10);
+      if (priorPass >= 2) continue;
+      const target = post.querySelector(`[${HAIKU_TARGET_ATTR}]`);
+      if (!target) continue;
+      const wrapper = target.querySelector(`:scope > [${ORIG_WRAPPER_ATTR}]`);
+      if (!wrapper) continue;
+      const origLen = parseInt(post.getAttribute(ORIG_LENGTH_ATTR) || '0', 10);
+      const currentLen = wrapper.textContent.length;
+      if (currentLen >= origLen * EXPANSION_RATIO && currentLen > EXPANSION_MIN_LEN) {
+        replacePostBodyWithHaiku(post, target);
+      }
     }
   }
 
@@ -513,15 +653,12 @@
       const toProcess = pendingRoots;
       pendingRoots = null;
       if (!settings.enabled || !patterns) return;
-      observer && observer.disconnect();
       try {
         for (const root of toProcess) {
           if (root && root.isConnected !== false) processSubtree(root);
         }
       } catch (err) {
         console.error('[Holiday from AI] process failed:', err);
-      } finally {
-        observer && observer.observe(document.body, { childList: true, subtree: true, characterData: true });
       }
     };
     if (typeof requestIdleCallback === 'function') requestIdleCallback(run, { timeout: 300 });
@@ -546,13 +683,15 @@
     observer.observe(document.body, { childList: true, subtree: true, characterData: true });
   }
 
+  // Lightweight periodic check. Detection of new posts is handled by the
+  // mutation observer (which now stays connected throughout). The health check
+  // only re-runs image swaps for late-loading posts and re-attaches the speaker
+  // button if LinkedIn's SPA tore it out.
   function startHealthCheck() {
     if (healthCheckTimer) return;
     healthCheckTimer = setInterval(() => {
       if (!settings.enabled || !patterns) return;
-      if (!pendingRoots) scheduleProcess([document.body]);
       rescanTransformedPosts();
-      // LinkedIn's SPA can detach our button during heavy re-renders; re-attach if so.
       if (!speakerBtn || !speakerBtn.isConnected) {
         speakerBtn = null;
         ensureSpeakerButton();
@@ -611,8 +750,7 @@
 
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (reducedMotion) {
-      observer && observer.disconnect();
-      try { processSubtree(document.body); } finally { startObserver(); }
+      processSubtree(document.body);
       return;
     }
 
@@ -621,6 +759,8 @@
     const nodes = collectTextNodes(document.body);
     const postMap = new Map();
     for (const node of nodes) {
+      if (isLikelyBylineOrChrome(node)) continue;
+      if (isInsideComment(node)) continue;
       if (!textHasAITerms(node.nodeValue)) continue;
       const post = findContainingPost(node);
       if (!post) continue;
@@ -638,7 +778,6 @@
     const bar = document.createElement('div');
     bar.className = SWEEP_BAR_CLASS;
     document.body.appendChild(bar);
-    observer && observer.disconnect();
 
     const vh = window.innerHeight, t0 = performance.now();
     let cursor = 0;
@@ -649,8 +788,8 @@
       while (cursor < entries.length && entries[cursor].y <= barY) {
         const { post, target } = entries[cursor];
         const wasTransformed = post.hasAttribute(TRANSFORMED_POST_ATTR);
-        replacePostBodyWithHaiku(post, target);
         swapPostImages(post);
+        replacePostBodyWithHaiku(post, target);
         if (!wasTransformed) trackTransformedPost(post);
         cursor++;
       }
@@ -667,7 +806,6 @@
         }
         bar.style.opacity = '0';
         setTimeout(() => bar.remove(), 400);
-        startObserver();
       }
     }
     requestAnimationFrame(step);
@@ -686,6 +824,7 @@
     applySoundState();
     console.log(`[Holiday from AI] ready — ${haikus.length} haikus, ${gardenImageUrls.length} images, enabled=${settings.enabled}`);
     if (settings.enabled) {
+      startObserver();
       sweepTransform();
       startHealthCheck();
     }
@@ -697,12 +836,14 @@
       if (wasEnabled && !settings.enabled) {
         if (observer) { observer.disconnect(); observer = null; }
         if (healthCheckTimer) { clearInterval(healthCheckTimer); healthCheckTimer = null; }
+        detachAutoplayGestureListener();
         revertAllReplacements();
         revertAllImageSwaps();
         applySoundState();
         return;
       }
       if (!wasEnabled && settings.enabled) {
+        startObserver();
         sweepTransform();
         startHealthCheck();
         applySoundState();

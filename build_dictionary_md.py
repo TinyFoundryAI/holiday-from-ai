@@ -59,16 +59,13 @@ def category(k):
     return 'concepts'
 
 
-HEADER = """# Holiday from AI — dictionary
+HEADER = """# Holiday from AI — detection list
 
 Auto-generated from `extension/themes/analog-life.json`. **Do not edit by hand** — edits here won't reach the shipped extension. Modify the JSON, then re-run `python3 build_dictionary_md.py` to regenerate this file.
 
+The list is a tripwire: any LinkedIn post containing one of these terms is replaced with a garden haiku.
+
 - **Total entries:** {total}
-- **Style rules:**
-  1. Replacements visually concrete, length-matched to the source term.
-  2. Dreamy and poetic, not try-hard. Flowery, visual, relaxing.
-  3. No leading articles on replacements. Source sentence's article (if any) carries through.
-  4. Garden and nature vocabulary only — no crafts, no urban analog, no human-contact vocabulary.
 
 ---
 
@@ -87,10 +84,10 @@ SECTION_ORDER = [
 
 def render_table(items):
     # sort alphabetically, case-insensitive
-    items = sorted(items, key=lambda kv: kv[0].lower())
-    out = ['| Source | Garden replacement |', '|---|---|']
-    for k, v in items:
-        out.append(f'| `{k}` | {v} |')
+    items = sorted(items, key=lambda k: k.lower())
+    out = ['| Term |', '|---|']
+    for k in items:
+        out.append(f'| `{k}` |')
     return '\n'.join(out)
 
 
@@ -99,8 +96,8 @@ def main():
     total = len(d)
 
     cats = {}
-    for k, v in d.items():
-        cats.setdefault(category(k), []).append((k, v))
+    for k in d:
+        cats.setdefault(category(k), []).append(k)
 
     out = [HEADER.format(total=total)]
     for cat_key, title, subtitle in SECTION_ORDER:
