@@ -1,5 +1,4 @@
-// Holiday from AI replacement engine.
-// Pluggable by design — static dictionary today, API-backed later.
+// Holiday from AI v2 — detection engine.
 // Exposes `AIHolidayEngine` on globalThis for the content script.
 
 (function () {
@@ -9,8 +8,6 @@
     return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
 
-  // A "short acronym" is an all-caps, no-space token with 2–5 letters (AI, IA, LLM, GPU, AGI, RAG, MCP, RLHF, GPT-4…).
-  // These are compiled case-sensitively so the regex doesn't hit French words like "j'ai", "je n'ai", "agi" (past tense of "agir").
   function isShortAcronym(key) {
     if (/\s/.test(key)) return false;
     const letters = key.replace(/[^A-Za-z]/g, '');
@@ -19,14 +16,13 @@
   }
 
   function compile(dictionary) {
-    const keys = Object.keys(dictionary).sort((a, b) => b.length - a.length);
-    return keys.map(key => {
+    // Accept either an array or a key-value object — v2 doesn't use values.
+    const keys = Array.isArray(dictionary) ? dictionary : Object.keys(dictionary);
+    const filtered = keys.filter(k => typeof k === 'string' && k.trim().length > 0);
+    const sorted = filtered.sort((a, b) => b.length - a.length);
+    return sorted.map(key => {
       const flags = isShortAcronym(key) ? 'g' : 'gi';
-      return {
-        key,
-        replacement: dictionary[key],
-        regex: new RegExp(`\\b${escapeRegex(key)}\\b`, flags)
-      };
+      return { key, regex: new RegExp(`\\b${escapeRegex(key)}\\b`, flags) };
     });
   }
 
