@@ -24,3 +24,10 @@ video-assets/
 # Superseded by extension/ (v0.4.0 merged in) — pending local deletion
 extension-v2/
 package-v2.sh
+
+# Internal working docs — kept locally, not for the public repo
+STATUS.md
+LESSONS.md
+PUBLISH.md
+COMMANDS.md
+AI_HOLIDAY_BUILD_SPEC.md

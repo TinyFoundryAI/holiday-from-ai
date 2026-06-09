@@ -64,10 +64,8 @@ Click the extension icon. One toggle: **Enabled** — turn the whole thing on or
 │   └── icons/
 ├── DICTIONARY.md                 # human-readable dictionary review doc
 ├── STORE_LISTING.md              # Chrome Web Store copy
-├── AI_HOLIDAY_BUILD_SPEC.md
 ├── CONTRIBUTING.md
 ├── CHANGELOG.md
-├── COMMANDS.md
 └── test/                         # offline test harness, not shipped
 ```
 

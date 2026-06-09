@@ -38,7 +38,7 @@ Helpful fields:
 
 ### Out of scope for v1
 
-See `AI_HOLIDAY_BUILD_SPEC.md` §7. Short version: no Claude API, no multi-theme UI, no Twitter/X, no telemetry, no hover-reveal.
+No Claude API, no multi-theme UI, no Twitter/X, no telemetry, no hover-reveal. The extension runs fully locally and stays that way.
 
 ## License
 
