@@ -1,30 +1,31 @@
-# Contributing to AI Holiday
+# Contributing to Holiday from AI
 
-The dictionary is the product. Most useful contributions are new replacement entries or better versions of existing ones. Code changes welcome too.
+Two things are the product: the **haikus** (what readers see) and the **detection dictionary** (what decides a post is about AI). Most useful contributions are new or better haikus, or detection terms that an AI post slipped past. Code changes welcome too.
 
-## Dictionary contributions
+## Haiku contributions
 
-File: `extension/themes/analog-life.json`. Flat `{ "ai-term": "garden-term" }`, bilingual (English and French merged).
+File: `extension/haikus.json`. 100 haikus, loose 5-7-5 English form, all garden and nature subjects. A detected post gets one deterministically (same post → same haiku).
 
 ### Style rules
 
-1. **Visually concrete, length-matched.** Replacement ≤ 1.5× the length of the original. Default to punchy; only stretch to lush when it's obviously funnier.
-2. **Dreamy and poetic, not try-hard.** The absurdity comes from the juxtaposition of LinkedIn's thought-leader format with garden vocabulary. Replacement words should feel matter-of-fact, not winking.
-3. **No leading articles on replacements.** The source sentence already has one. `LLM → greenhouse`, not `a greenhouse`. Strict rule — applies to French (`le`, `la`, `l'`, `un`, `une`, `des`) and English (`the`, `a`, `an`). Phrase entries that include an article in the source key (`l'IA`, `grâce à l'IA`) should still produce article-free output.
-4. **Garden and nature vocabulary only.** Plants, garden structures, wildlife, weather, seasons, garden verbs. No crafts, libraries, urban analog life, rituals, or human-contact vocabulary. One coherent metaphorical world.
-5. **Tone is gentle.** Not anti-tech, not Luddite, not sarcastic. A holiday, not a protest.
+1. **Visually concrete.** Real plants, weather, wildlife, garden structures — something you can picture.
+2. **Dreamy and poetic, not try-hard.** The absurdity comes from the juxtaposition of LinkedIn's thought-leader format with a quiet garden scene. The haiku itself should be sincere, not winking.
+3. **Garden and nature vocabulary only.** Plants, garden structures, wildlife, weather, seasons, garden verbs. No crafts, libraries, urban analog life, rituals, or human-contact vocabulary. One coherent world.
+4. **Tone is gentle.** Not anti-tech, not Luddite, not sarcastic. A holiday, not a protest.
 
-### How to propose an entry
+## Detection contributions
 
-Open a PR editing `extension/themes/analog-life.json`. One-line PR description is fine. If the entry might land differently than another reviewer expects, note it in the PR body — otherwise we'll trust the style rules.
+File: `extension/themes/analog-life.json`. A bilingual (English + French) list of AI-related terms used as a trip-wire — if a post's text contains one, the post is swapped for a haiku. If an obviously-AI post sailed through untouched, the missing term is the bug. Add it.
 
-For broader style discussions (new vocabulary categories, tone shifts, etc.), open an issue first so we don't debate in code review.
+### How to propose a change
+
+Open a PR editing `extension/haikus.json` or `extension/themes/analog-life.json`. One-line PR description is fine. For broader style discussions (new vocabulary categories, tone shifts, etc.), open an issue first so we don't debate in code review.
 
 ## Code contributions
 
 - Node ≥ 18 if you want to run linters locally (none configured yet — PRs welcome to add).
 - `extension/src/replacement-engine.js` is the hot path. Benchmark any changes against LinkedIn feed scrolling — the v1 target is < 50ms per scroll batch.
-- `extension/src/content.js` handles DOM orchestration (MutationObserver, text-node walks, indicator injection, sweep animation). Keep mutations wrapped with `observer.disconnect()` / `observer.observe()` to avoid recursion.
+- `extension/src/content.js` handles DOM orchestration (MutationObserver, URN-based post matching, text-node walks, haiku/image swap, sound swell). Keep mutations wrapped with `observer.disconnect()` / `observer.observe()` to avoid recursion.
 - `extension/src/popup/` is UI only. No business logic.
 
 ### Bug reports

@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.4.0 — 2026-06-03 — URN-based post detection
+
+- **Reworked post detection around LinkedIn URNs.** Posts are now matched by their `data-urn` across all three LinkedIn post surfaces — main feed (`role="listitem"`), company pages (`role="article"` + `data-urn`), and articles — instead of relying on hashed class names. More robust to LinkedIn DOM churn.
+- Perf cleanup on the content-script hot path.
+- This is the version submitted to the Chrome Web Store. The `extension/` folder is the canonical, loadable extension; the old `extension-v2/` scaffold was retired.
+
+## 0.3.0 — 2026-04-25 — Popup polish & sound auto-on
+
+- **Popup polish.** Single Enabled/Disabled toggle; "off" fully reverts the page and stops the birds.
+- **Sound auto-on.** Birdsong soundtrack now enabled by default, swelling when AI-heavy posts are in view.
+- **Demo mode removed.** The whitelist/demo path was cut for the shipping build.
+- **Image set trimmed** to the strongest garden photos.
+
+## 0.2.1 — 2026-04-21 — Haiku tuning
+
+- Garden-themed haikus refined; better bundled Unsplash garden images.
+- Profile/title detection fixes so bylines don't trigger replacement.
+- Video posts get swapped alongside images.
+
 ## 0.2.0 — 2026-04-21 — 🌱 Haiku mode
 
 **Breaking concept change.** The dictionary no longer replaces individual words; it now *detects* whether a LinkedIn post mentions AI and, if so, replaces the entire post body with a garden/nature haiku.
