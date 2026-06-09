@@ -1,20 +1,44 @@
-# AI Holiday
+# Holiday from AI
 
-AI Holiday is a Chrome extension that replaces AI mentions on LinkedIn with references to gardens, bumblebees, and the south-facing window. It works in English and French. It does not take itself seriously. It does work.
+A Chrome extension that replaces every AI post on your LinkedIn feed with a short haiku about gardens and nature. It works in English and French. It does not take itself seriously. It does work.
 
 ## What it does
 
-LinkedIn's thought-leader format stays intact. Only the subject matter becomes gardening.
+Do you need a holiday from AI-FOMO-LinkedIn? Tired of feeling like your peers all spun up fully autonomous agentic side businesses over the weekend?
 
-> "I've been deeply thinking about how AI agents will transform productivity."
+Holiday from AI detects AI-related posts and replaces the whole post body with a garden haiku.
 
-becomes
+Before:
 
-> "I've been deeply thinking about how bumblebees will transform productivity."
+> "I've been deeply thinking about how agentic AI will transform enterprise workflow automation. Here are my 7 takeaways from a recent conversation with an LLM expert..."
 
-A small 🌱 marks every post AI Holiday has touched. You can turn that off.
+After:
 
-## Install (developer mode)
+> Tomato vines heavy,
+> a bumblebee naps in shade
+> below the south wall
+
+The extension bundles **100 haikus** (loose 5-7-5 form, all garden and nature).
+
+## Bonus features
+
+- **Image swap** — post images get replaced with real garden photos (potagers and lush gardens, bundled locally).
+- **Birdsong** — an optional chirping-birds soundtrack swells gently when AI-heavy posts are in view, so you can close your eyes and forget about AGI.
+- **One toggle** — flip the extension off from the popup and the page fully reverts; the birds stop too.
+
+Everything runs locally in your browser. No data collected, no servers contacted, no telemetry. Open source.
+
+## How detection works
+
+Detection is powered by a 200+ entry AI-vocabulary dictionary: every model (GPT, Claude, Gemini, Mistral), company, industry figure, buzzword, and French AI term. If a post mentions AI in any language, it gets a haiku.
+
+The content script uses a `MutationObserver` to catch LinkedIn's infinite-scroll updates, matches posts by URN across the three LinkedIn post surfaces (main feed, company pages, articles), and only acts on posts that trip the dictionary. No network calls. No telemetry. Runs only on `*.linkedin.com`.
+
+## Install
+
+**Chrome Web Store:** submitted, pending review (v0.4.0).
+
+**Developer mode (now):**
 
 1. Clone this repo.
 2. Visit `chrome://extensions` in Chrome.
@@ -22,47 +46,39 @@ A small 🌱 marks every post AI Holiday has touched. You can turn that off.
 4. Click **Load unpacked** and select the **`extension/`** subfolder (not the repo root).
 5. Open LinkedIn. Scroll.
 
-Chrome Web Store listing: not yet.
+## Settings
+
+Click the extension icon. One toggle: **Enabled** — turn the whole thing on or off. "Off" fully reverts the page and stops the birds. The setting persists across devices via `chrome.storage.sync`.
 
 ## Repo layout
 
 ```
 .
-├── extension/          # the loadable Chrome extension (this is what Chrome sees)
+├── extension/                    # the loadable Chrome extension (this is what Chrome sees)
 │   ├── manifest.json
-│   ├── src/
-│   ├── themes/analog-life.json
+│   ├── haikus.json               # the 100 haikus
+│   ├── src/                      # replacement engine, content script, background, popup
+│   ├── themes/analog-life.json   # the AI-detection dictionary
+│   ├── images/                   # bundled garden photos for image swaps
+│   ├── audio/                    # birdsong soundtrack
 │   └── icons/
-├── DICTIONARY.md       # human-readable dictionary review doc
+├── DICTIONARY.md                 # human-readable dictionary review doc
+├── STORE_LISTING.md              # Chrome Web Store copy
 ├── AI_HOLIDAY_BUILD_SPEC.md
 ├── CONTRIBUTING.md
 ├── CHANGELOG.md
 ├── COMMANDS.md
-└── test/               # offline test harness, not shipped
+└── test/                         # offline test harness, not shipped
 ```
-
-## Settings
-
-Click the extension icon. Two toggles:
-- **Enabled** — turn the whole thing on or off.
-- **Show 🌱** — hide the indicator if you want the joke to be quieter.
-
-Settings persist across devices via `chrome.storage.sync`.
-
-## How it works
-
-The dictionary lives at `extension/themes/analog-life.json` — a flat `{ "ai-term": "garden-term" }` mapping, bilingual (English + French in the same file). The content script uses a `MutationObserver` to catch LinkedIn's infinite-scroll updates, then does a word-boundary regex replace on text nodes only. Longer phrases match first. Capitalization is preserved.
-
-No network calls. No telemetry. Runs only on `*.linkedin.com`.
 
 ## Contributing
 
-The dictionary is the product. If you have a replacement that lands better — open a PR against `themes/analog-life.json`. Style rules:
+The haikus and the detection dictionary are the product.
 
-1. Visually concrete, length-matched to the original.
-2. Dreamy and poetic, not try-hard.
-3. No leading articles on replacements.
-4. Garden and nature vocabulary only. No crafts, no urban analog life, no human contact vocabulary.
+- **Haikus** live in `extension/haikus.json`. Loose 5-7-5, garden and nature only, no try-hard.
+- **Detection terms** live in `extension/themes/analog-life.json`. If an AI term slips past, add it (English or French).
+
+Open a PR. Style rules for haikus: visually concrete, dreamy not try-hard, garden and nature vocabulary only — no crafts, no urban analog life, no human-contact vocabulary.
 
 ## License
 
