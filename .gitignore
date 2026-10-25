@@ -1,3 +1,6 @@
+# Secrets: never commit env files
+.env*
+
 # Build output
 dist/
 *.zip
